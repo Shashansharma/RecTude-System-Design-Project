@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RecTube — Video Recommendation System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0F0F0F;
+    --panel:#181818;
+    --hover:#272727;
+    --text:#F1F1F1;
+    --muted:#AAAAAA;
+    --accent:#3EA6FF;
+    --red:#FF0000;
+    --teal:#5DCAA5;
+    --coral:#E8593C;
+    --amber:#F2A623;
+    --border:#303030;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;font-family:'Roboto',sans-serif;}
+  body{background:var(--bg);color:var(--text);}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  button{font-family:inherit;}
+
+  /* ===== HEADER ===== */
+  header{
+    position:sticky;top:0;z-index:100;
+    display:flex;align-items:center;justify-content:space-between;
+    height:56px;padding:0 16px;background:var(--bg);
+    border-bottom:1px solid var(--border);
+  }
+  .header-left{display:flex;align-items:center;gap:16px;}
+  .menu-icon{display:flex;flex-direction:column;gap:4px;cursor:pointer;padding:8px;border-radius:50%;background:none;border:none;}
+  .menu-icon:hover{background:var(--hover);}
+  .menu-icon span{width:18px;height:2px;background:var(--text);border-radius:1px;}
+  .logo{display:flex;align-items:center;gap:6px;font-size:20px;font-weight:700;letter-spacing:-0.5px;cursor:pointer;background:none;border:none;color:var(--text);}
+  .logo .play{
+    width:28px;height:20px;background:var(--red);border-radius:5px;
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .logo .play::after{
+    content:'';border-left:8px solid var(--bg);border-top:5px solid transparent;
+    border-bottom:5px solid transparent;margin-left:2px;
+  }
+  .logo .beta{
+    font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);
+    border:1px solid var(--border);border-radius:4px;padding:2px 6px;
+    margin-left:4px;letter-spacing:1px;
+  }
+  .header-center{
+    flex:1;max-width:640px;margin:0 40px;display:flex;
+  }
+  .search-box{
+    flex:1;display:flex;align-items:center;
+    border:1px solid var(--border);border-radius:20px 0 0 20px;
+    background:var(--bg);overflow:hidden;
+  }
+  .search-box input{
+    flex:1;background:transparent;border:none;outline:none;color:var(--text);
+    padding:10px 16px;font-size:15px;
+  }
+  .search-box input::placeholder{color:var(--muted);}
+  .search-btn{
+    width:64px;background:var(--panel);border:1px solid var(--border);border-left:none;
+    border-radius:0 20px 20px 0;display:flex;align-items:center;justify-content:center;cursor:pointer;
+  }
+  .header-right{display:flex;align-items:center;gap:8px;}
+  .icon-btn{
+    width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    cursor:pointer;font-size:18px;color:var(--text);background:none;border:none;position:relative;
+  }
+  .icon-btn:hover{background:var(--hover);}
+  .notif-badge{
+    position:absolute;top:4px;right:4px;background:var(--red);color:#fff;
+    font-size:9px;border-radius:50%;width:16px;height:16px;
+    display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;
+  }
+  .avatar{
+    width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--coral));
+    display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;cursor:pointer;border:none;color:#fff;
+  }
+
+  /* ===== LAYOUT ===== */
+  .layout{display:flex;}
+
+  /* ===== SIDEBAR ===== */
+  .sidebar{
+    width:240px;flex-shrink:0;padding:12px 8px;
+    height:calc(100vh - 56px);position:sticky;top:56px;overflow-y:auto;
+    transition:transform .2s;
+  }
+  .sidebar.collapsed{display:none;}
+  .side-section{padding:8px 0;border-bottom:1px solid var(--border);margin-bottom:8px;}
+  .side-section:last-child{border-bottom:none;}
+  .side-item{
+    display:flex;align-items:center;gap:20px;padding:10px 12px;border-radius:10px;
+    cursor:pointer;font-size:14px;color:var(--text);text-decoration:none;background:none;border:none;width:100%;text-align:left;
+  }
+  .side-item:hover{background:var(--hover);}
+  .side-item.active{background:var(--hover);font-weight:500;}
+  .side-icon{font-size:18px;width:24px;text-align:center;flex-shrink:0;}
+  .side-label{font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace;letter-spacing:1px;text-transform:uppercase;padding:8px 12px;}
+
+  /* ===== MAIN CONTENT ===== */
+  .main{flex:1;padding:24px 32px;max-width:100%;min-width:0;}
+
+  /* algo banner */
+  .algo-banner{
+    background:var(--panel);border:1px solid var(--border);border-radius:12px;
+    padding:14px 20px;margin-bottom:20px;display:flex;align-items:center;gap:24px;flex-wrap:wrap;
+  }
+  .algo-banner .ab-title{font-size:14px;font-weight:500;display:flex;align-items:center;gap:8px;}
+  .algo-banner .ab-title .live-dot{
+    width:8px;height:8px;border-radius:50%;background:var(--red);
+    box-shadow:0 0 8px var(--red);animation:pulse 1.6s infinite;
+  }
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
+  .algo-meta{display:flex;gap:20px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);flex-wrap:wrap;}
+  .algo-meta b{color:var(--text);}
+  .algo-meta b.hit{color:var(--teal);}
+  .algo-meta b.miss{color:var(--amber);}
+
+  /* category chips */
+  .chips{display:flex;gap:10px;margin-bottom:24px;overflow-x:auto;padding-bottom:4px;}
+  .chip{
+    background:var(--panel);border:1px solid var(--border);border-radius:8px;
+    padding:7px 14px;font-size:13px;white-space:nowrap;cursor:pointer;transition:.15s;color:var(--text);
+  }
+  .chip:hover{background:var(--hover);}
+  .chip.active{background:var(--text);color:var(--bg);border-color:var(--text);}
+
+  /* video grid */
+  .grid{
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:24px 16px;
+  }
+  .video-card{cursor:pointer;}
+  .thumb{
+    width:100%;aspect-ratio:16/9;border-radius:12px;position:relative;overflow:hidden;
+    display:flex;align-items:center;justify-content:center;margin-bottom:10px;
+    font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#fff;
+    transition:transform .15s;
+  }
+  .video-card:hover .thumb{transform:scale(1.015);}
+  .duration-badge{
+    position:absolute;bottom:6px;right:6px;background:rgba(0,0,0,0.8);
+    font-size:11px;padding:2px 5px;border-radius:4px;font-family:'IBM Plex Mono',monospace;
+  }
+  .video-info{display:flex;gap:10px;}
+  .channel-avatar{
+    width:36px;height:36px;border-radius:50%;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:#fff;
+  }
+  .video-meta{flex:1;min-width:0;}
+  .video-title{font-size:14px;font-weight:500;line-height:1.4;margin-bottom:4px;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+  .video-channel{font-size:12px;color:var(--muted);}
+  .video-stats{font-size:12px;color:var(--muted);}
+  .why-tag{
+    margin-top:6px;font-family:'IBM Plex Mono',monospace;font-size:10px;
+    display:inline-flex;align-items:center;gap:4px;padding:2px 6px;border-radius:4px;
+    border:1px solid var(--border);letter-spacing:0.5px;
+  }
+  .why-tag.cf{color:var(--teal);border-color:rgba(93,202,165,0.35);}
+  .why-tag.cbf{color:var(--coral);border-color:rgba(232,89,60,0.35);}
+  .why-tag.cold{color:var(--accent);border-color:rgba(62,166,255,0.35);}
+
+  /* ===== WATCH PAGE ===== */
+  .watch-layout{display:flex;gap:24px;padding:24px 32px;max-width:1800px;}
+  .watch-main{flex:1;min-width:0;max-width:1100px;}
+  .watch-side{width:380px;flex-shrink:0;}
+
+  .player{
+    width:100%;aspect-ratio:16/9;border-radius:12px;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;position:relative;overflow:hidden;color:#fff;margin-bottom:16px;
+  }
+  .player-overlay{
+    position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    background:rgba(0,0,0,0.25);
+  }
+  .play-btn{
+    width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,0.15);
+    border:2px solid rgba(255,255,255,0.6);display:flex;align-items:center;justify-content:center;
+    font-size:24px;cursor:pointer;margin-bottom:12px;backdrop-filter:blur(4px);color:#fff;
+  }
+  .player-progress{
+    position:absolute;bottom:0;left:0;height:4px;background:var(--red);width:0%;transition:width .3s linear;
+  }
+  .player-genre-label{font-size:13px;letter-spacing:3px;text-transform:uppercase;font-weight:700;opacity:0.8;}
+
+  .watch-title{font-size:18px;font-weight:600;margin-bottom:10px;line-height:1.4;}
+  .watch-row{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:16px;}
+  .watch-channel-row{display:flex;align-items:center;gap:12px;}
+  .watch-channel-name{font-size:14px;font-weight:600;}
+  .watch-channel-sub{font-size:12px;color:var(--muted);}
+  .watch-actions{display:flex;gap:8px;flex-wrap:wrap;}
+  .action-btn{
+    display:flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--border);
+    color:var(--text);border-radius:18px;padding:8px 16px;font-size:13px;cursor:pointer;transition:.15s;
+  }
+  .action-btn:hover{background:var(--hover);}
+  .action-btn.active{background:var(--text);color:var(--bg);}
+  .action-btn.like.active{background:var(--teal);border-color:var(--teal);color:#06231a;}
+  .action-btn.skip.active{background:var(--coral);border-color:var(--coral);color:#2b0e07;}
+
+  .desc-box{
+    background:var(--panel);border-radius:12px;padding:14px 16px;font-size:13px;color:var(--text);
+    margin-bottom:20px;
+  }
+  .desc-box .desc-stats{color:var(--muted);margin-bottom:8px;font-family:'IBM Plex Mono',monospace;}
+  .desc-box .tags-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;}
+  .desc-tag{
+    font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--accent);
+    border:1px solid rgba(62,166,255,0.3);border-radius:4px;padding:2px 8px;
+  }
+
+  .feed-event{
+    font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--amber);
+    background:rgba(242,166,35,0.08);border:1px solid rgba(242,166,35,0.25);
+    border-radius:8px;padding:10px 12px;margin-bottom:16px;display:none;
+  }
+  .feed-event.show{display:block;animation:fadein .3s;}
+  @keyframes fadein{from{opacity:0;transform:translateY(-4px);}to{opacity:1;transform:translateY(0);}}
+
+  /* up-next sidebar */
+  .watch-side-title{font-size:13px;font-weight:600;margin-bottom:12px;color:var(--text);font-family:'IBM Plex Mono',monospace;letter-spacing:1px;text-transform:uppercase;color:var(--muted);}
+  .side-video{display:flex;gap:8px;cursor:pointer;margin-bottom:12px;padding:6px;border-radius:8px;}
+  .side-video:hover{background:var(--hover);}
+  .side-thumb{
+    width:160px;aspect-ratio:16/9;border-radius:8px;flex-shrink:0;position:relative;overflow:hidden;
+    display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;
+    text-transform:uppercase;letter-spacing:1px;
+  }
+  .side-duration{position:absolute;bottom:4px;right:4px;background:rgba(0,0,0,0.8);font-size:10px;padding:1px 4px;border-radius:3px;font-family:'IBM Plex Mono',monospace;}
+  .side-info{flex:1;min-width:0;}
+  .side-title{font-size:13px;font-weight:500;line-height:1.35;margin-bottom:3px;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+  .side-channel{font-size:11px;color:var(--muted);}
+  .side-stats{font-size:11px;color:var(--muted);}
+  .side-why{margin-top:4px;}
+
+  /* hidden util */
+  .hidden{display:none !important;}
+
+  /* responsive */
+  @media (max-width:1100px){
+    .watch-layout{flex-direction:column;}
+    .watch-side{width:100%;}
+  }
+  @media (max-width:1000px){
+    .sidebar{display:none;}
+    .header-center{margin:0 12px;}
+  }
+  @media (max-width:600px){
+    .header-center{display:none;}
+    .main, .watch-layout{padding:16px;}
+    .grid{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <button class="menu-icon" id="menuToggle" aria-label="Toggle sidebar"><span></span><span></span><span></span></button>
+    <button class="logo" id="logoHome">
+      <div class="play"></div>
+      RecTube
+      <span class="beta mono">algo demo</span>
+    </button>
+  </div>
+  <div class="header-center">
+    <div class="search-box">
+      <input type="text" placeholder="Search recommended videos" id="searchInput">
+    </div>
+    <div class="search-btn">🔍</div>
+  </div>
+  <div class="header-right">
+    <button class="icon-btn" id="notifBtn">🔔<span class="notif-badge mono" id="notifCount">0</span></button>
+    <button class="avatar" id="userAvatar">A</button>
+    <button class="action-btn" id="loginBtn" style="margin-left:4px;">👤 Sign in</button>
+  </div>
+</header>
+
+<div class="layout">
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="side-section">
+      <button class="side-item active" id="navHome"><span class="side-icon">🏠</span> Home</button>
+      <button class="side-item" id="navHistory"><span class="side-icon">🕑</span> History</button>
+      <button class="side-item" id="navLiked"><span class="side-icon">👍</span> Liked videos</button>
+    </div>
+    <div class="side-section">
+      <div class="side-label">Demo: switch user</div>
+      <div id="sidebarUsers"></div>
+    </div>
+    <div class="side-section">
+      <div class="side-label">Recommender weights</div>
+      <button class="side-item" id="navCF"><span class="side-icon">🧬</span> Collaborative — 60%</button>
+      <button class="side-item" id="navCBF"><span class="side-icon">🏷️</span> Content-based — 40%</button>
+    </div>
+  </aside>
+
+  <!-- HOME VIEW -->
+  <main class="main" id="homeView">
+    <div class="algo-banner">
+      <div class="ab-title"><span class="live-dot"></span> Recommendations for <span id="activeUserName" style="color:var(--accent);">Aarav</span></div>
+      <div class="algo-meta">
+        <div>cf_weight: <b>0.6</b></div>
+        <div>cbf_weight: <b>0.4</b></div>
+        <div>cache: <b id="cacheStatus" class="miss">MISS</b></div>
+        <div>latency: <b id="latency">—</b></div>
+        <div>interactions: <b id="interactionCount">0</b></div>
+      </div>
+    </div>
+
+    <div class="chips" id="chips"></div>
+
+    <div class="grid" id="videoGrid"></div>
+  </main>
+
+  <!-- WATCH VIEW -->
+  <div class="watch-layout hidden" id="watchView">
+    <div class="watch-main">
+      <div class="player" id="player">
+        <div class="player-overlay">
+          <button class="play-btn" id="playBtn">▶</button>
+          <div class="player-genre-label" id="playerGenre"></div>
+        </div>
+        <div class="player-progress" id="playerProgress"></div>
+      </div>
+
+      <div class="feed-event" id="feedEvent"></div>
+
+      <div class="watch-title" id="watchTitle"></div>
+      <div class="watch-row">
+        <div class="watch-channel-row">
+          <div class="channel-avatar" id="watchChannelAvatar"></div>
+          <div>
+            <div class="watch-channel-name" id="watchChannelName"></div>
+            <div class="watch-channel-sub" id="watchViews"></div>
+          </div>
+        </div>
+        <div class="watch-actions">
+          <button class="action-btn like" id="likeBtn">👍 <span id="likeLabel">Like</span></button>
+          <button class="action-btn skip" id="skipBtn">👎 <span id="skipLabel">Not interested</span></button>
+          <button class="action-btn" id="shareBtn">🔗 Share</button>
+        </div>
+      </div>
+
+      <div class="desc-box">
+        <div class="desc-stats" id="watchDescStats"></div>
+        <div id="watchDesc"></div>
+        <div class="tags-row" id="watchTags"></div>
+      </div>
+    </div>
+
+    <div class="watch-side">
+      <div class="algo-banner" style="margin-bottom:14px;">
+        <div class="ab-title" style="font-size:13px;"><span class="live-dot"></span> Recomputing recs after this interaction…</div>
+      </div>
+      <div class="watch-side-title">Up next — recommended for <span id="upNextUser" style="color:var(--accent);"></span></div>
+      <div id="upNextList"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   DATA — mirrors the Python backend (Database / seed data)
+   ============================================================ */
+const users = [
+  {id:'u001', name:'Aarav', prefs:['technology','gaming']},
+  {id:'u002', name:'Priya', prefs:['cooking','travel']},
+  {id:'u003', name:'Ravi',  prefs:['technology','music']},
+  {id:'u004', name:'Sneha', prefs:['fitness','cooking']},
+];
+
+const videoMeta = {
+  v001:{title:'Python for Beginners — Full Course', genre:'technology', tags:['python','coding','beginners'], duration:'45:00', durSec:45, channel:'CodeAcademy', views:'1.2M views', age:'2 weeks ago', color1:'#3E6BB8', color2:'#1B2A4A',
+    img:'https://images.unsplash.com/photo-1526379095098-d400fd0bf935?w=480&h=270&fit=crop',
+    desc:'A complete beginner-friendly walkthrough of Python syntax, data structures, functions and small projects. No prior programming experience needed.'},
+  v002:{title:'System Design Basics: Scale to Millions', genre:'technology', tags:['system-design','coding','scalability'], duration:'60:00', durSec:60, channel:'TechByte', views:'845K views', age:'1 month ago', color1:'#5D5DCA', color2:'#23234A',
+    img:'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=480&h=270&fit=crop',
+    desc:'Learn the core ideas behind designing systems that scale — load balancing, caching, sharding, and replication explained with real examples.'},
+  v003:{title:'Street Food of Mumbai — Full Tour', genre:'cooking', tags:['food','travel','mumbai'], duration:'30:00', durSec:30, channel:'FoodTrails', views:'3.4M views', age:'5 days ago', color1:'#E0863F', color2:'#5C3415',
+    img:'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=480&h=270&fit=crop',
+    desc:'A flavour-packed tour through the most iconic street food stalls of Mumbai — vada pav, pav bhaji, and more.'},
+  v004:{title:'Guitar Fundamentals for Absolute Beginners', genre:'music', tags:['guitar','music','beginners'], duration:'40:00', durSec:40, channel:'MusicLab', views:'620K views', age:'3 weeks ago', color1:'#C2547A', color2:'#3A1A2A',
+    img:'https://images.unsplash.com/photo-1525201548942-d8732f6617a0?w=480&h=270&fit=crop',
+    desc:'Start your guitar journey here — posture, chords, strumming patterns and your first full song.'},
+  v005:{title:'Morning Yoga Routine — 25 Min Flow', genre:'fitness', tags:['yoga','fitness','wellness'], duration:'25:00', durSec:25, channel:'WellSpace', views:'2.1M views', age:'4 days ago', color1:'#5DCAA5', color2:'#0F3D2E',
+    img:'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=480&h=270&fit=crop',
+    desc:'A gentle full-body morning flow to wake up your muscles and set a calm tone for the day.'},
+  v006:{title:'Machine Learning 101: From Zero to Model', genre:'technology', tags:['ml','python','ai','coding'], duration:'55:00', durSec:55, channel:'CodeAcademy', views:'1.8M views', age:'1 week ago', color1:'#3E6BB8', color2:'#1B2A4A',
+    img:'https://images.unsplash.com/photo-1555255707-c07966088b7b?w=480&h=270&fit=crop',
+    desc:'Understand the fundamentals of machine learning and train your first model using Python.'},
+  v007:{title:'Backpacking Through Kerala — Solo Trip', genre:'travel', tags:['travel','kerala','nature'], duration:'35:00', durSec:35, channel:'WanderOften', views:'990K views', age:'6 days ago', color1:'#3EA6FF', color2:'#102A40',
+    img:'https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?w=480&h=270&fit=crop',
+    desc:'Backwaters, hills and hidden beaches — a solo backpacking journey across Kerala on a budget.'},
+  v008:{title:'Healthy Meal Prep for the Week', genre:'cooking', tags:['cooking','fitness','food'], duration:'20:00', durSec:20, channel:'FoodTrails', views:'1.5M views', age:'2 days ago', color1:'#E0863F', color2:'#5C3415',
+    img:'https://images.unsplash.com/photo-1543352634-a1c51d9f1fa7?w=480&h=270&fit=crop',
+    desc:'Five easy, healthy meals you can prep in under an hour for the entire work week.'},
+  v009:{title:'Drums for Beginners — Lesson 1', genre:'music', tags:['drums','music','beginners'], duration:'35:00', durSec:35, channel:'MusicLab', views:'410K views', age:'3 days ago', color1:'#C2547A', color2:'#3A1A2A',
+    img:'https://images.unsplash.com/photo-1519892300165-cb5542fb47c7?w=480&h=270&fit=crop',
+    desc:'Your first drum lesson — basic grip, posture, and a simple beat you can play today.'},
+  v010:{title:'Cloud Architecture on AWS Explained', genre:'technology', tags:['aws','cloud','system-design'], duration:'70:00', durSec:70, channel:'TechByte', views:'1.1M views', age:'10 hours ago', color1:'#5D5DCA', color2:'#23234A',
+    img:'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=480&h=270&fit=crop',
+    desc:'A practical tour of core AWS services — EC2, S3, Lambda, and how they fit into a scalable architecture.'},
+  v011:{title:'Advanced Chess Openings Explained', genre:'gaming', tags:['chess','strategy','beginners'], duration:'28:00', durSec:28, channel:'MindGames', views:'730K views', age:'1 week ago', color1:'#6E4E9E', color2:'#241932',
+    img:'https://images.unsplash.com/photo-1528819622765-d6bcf132f793?w=480&h=270&fit=crop',
+    desc:'Master the most popular chess openings with clear explanations of the ideas behind each move.'},
+  v012:{title:'Top 10 Open World Games of the Year', genre:'gaming', tags:['gaming','reviews','open-world'], duration:'18:00', durSec:18, channel:'PixelPulse', views:'2.7M views', age:'3 days ago', color1:'#E0863F', color2:'#3D2412',
+    img:'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=480&h=270&fit=crop',
+    desc:'Our countdown of the best open-world games this year, ranked by exploration, story, and graphics.'},
+  v013:{title:'Building a REST API with Node.js', genre:'technology', tags:['nodejs','api','coding','backend'], duration:'50:00', durSec:50, channel:'TechByte', views:'560K views', age:'4 days ago', color1:'#5D5DCA', color2:'#23234A',
+    img:'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=480&h=270&fit=crop',
+    desc:'Build a fully functional REST API from scratch using Node.js, Express, and MongoDB.'},
+  v014:{title:'Goa Beaches You Must Visit', genre:'travel', tags:['travel','goa','beaches','nature'], duration:'22:00', durSec:22, channel:'WanderOften', views:'1.4M views', age:'2 weeks ago', color1:'#3EA6FF', color2:'#102A40',
+    img:'https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=480&h=270&fit=crop',
+    desc:'The most scenic and underrated beaches in Goa, from sunrise spots to sunset shacks.'},
+  v015:{title:'30-Minute Full Body HIIT Workout', genre:'fitness', tags:['fitness','workout','hiit'], duration:'30:00', durSec:30, channel:'WellSpace', views:'3.0M views', age:'1 day ago', color1:'#5DCAA5', color2:'#0F3D2E',
+    img:'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=480&h=270&fit=crop',
+    desc:'No equipment needed — a high-intensity full body workout you can do anywhere in 30 minutes.'},
+  v016:{title:'Piano Lessons for Beginners — Episode 1', genre:'music', tags:['piano','music','beginners'], duration:'33:00', durSec:33, channel:'MusicLab', views:'880K views', age:'5 days ago', color1:'#C2547A', color2:'#3A1A2A',
+    img:'https://images.unsplash.com/photo-1520523839897-bd0b52f945a0?w=480&h=270&fit=crop',
+    desc:'Learn the basics of piano — finger positioning, reading notes, and your first simple melody.'},
+  v017:{title:'South Indian Breakfast Recipes',  genre:'cooking', tags:['food','recipes','south-indian'], duration:'24:00', durSec:24, channel:'FoodTrails', views:'2.0M views', age:'1 week ago', color1:'#E0863F', color2:'#5C3415',
+    img:'https://images.unsplash.com/photo-1589302168068-964664d93dc0?w=480&h=270&fit=crop',
+    desc:'Dosa, idli, and uttapam — classic South Indian breakfast recipes made simple at home.'},
+  v018:{title:'Speedrunning Explained: How Pros Do It', genre:'gaming', tags:['gaming','speedrun','strategy'], duration:'15:00', durSec:15, channel:'PixelPulse', views:'1.9M views', age:'6 days ago', color1:'#E0863F', color2:'#3D2412',
+    img:'https://images.unsplash.com/photo-1493711662062-fa541adb3fc8?w=480&h=270&fit=crop',
+    desc:'A breakdown of the techniques speedrunners use to complete games in record time.'},
+};
+
+// Live, mutable interaction store (this is what the backend's Database class holds)
+const interactions = {
+  u001:[{v:'v001',a:'watch',r:4.0},{v:'v002',a:'like',r:5.0},{v:'v006',a:'watch',r:4.5},{v:'v003',a:'skip',r:0.0}],
+  u002:[{v:'v003',a:'like',r:5.0},{v:'v007',a:'watch',r:4.0},{v:'v008',a:'watch',r:4.5},{v:'v002',a:'skip',r:0.0}],
+  u003:[{v:'v001',a:'like',r:5.0},{v:'v004',a:'watch',r:4.0},{v:'v006',a:'like',r:5.0},{v:'v010',a:'watch',r:4.5}],
+  u004:[{v:'v005',a:'like',r:5.0},{v:'v008',a:'watch',r:4.0},{v:'v003',a:'watch',r:3.5}],
+};
+
+const actionWeight = {watch:1.0, like:2.0, share:2.5, skip:-1.0};
+
+/* ============================================================
+   RECOMMENDATION ENGINE — mirrors CollaborativeFilter,
+   ContentBasedFilter, HybridRecommender, Cache classes
+   ============================================================ */
+const cache = {}; // mirrors Cache class: { uid: {result, reasons} }
+
+function userVector(uid){
+  const vec = {};
+  (interactions[uid]||[]).forEach(i=>{
+    let w = (actionWeight[i.a]||0) + i.r*0.5;
+    vec[i.v] = (vec[i.v]||0) + w;
+  });
+  return vec;
+}
+function cosine(a,b){
+  const shared = Object.keys(a).filter(k=>k in b);
+  if(!shared.length) return 0;
+  let dot=0; shared.forEach(k=> dot += a[k]*b[k]);
+  const na = Math.sqrt(Object.values(a).reduce((s,v)=>s+v*v,0));
+  const nb = Math.sqrt(Object.values(b).reduce((s,v)=>s+v*v,0));
+  return (na===0||nb===0) ? 0 : dot/(na*nb);
+}
+function collaborativeRecs(uid, topN=10){
+  const target = userVector(uid);
+  if(!Object.keys(target).length) return [];
+  const sims = users.filter(u=>u.id!==uid).map(u=>({id:u.id, sim:cosine(target, userVector(u.id))})).filter(s=>s.sim>0);
+  sims.sort((a,b)=>b.sim-a.sim);
+  const top = sims.slice(0,5);
+  const watched = new Set(Object.keys(target));
+  const scores = {};
+  top.forEach(({id,sim})=>{
+    Object.entries(userVector(id)).forEach(([v,score])=>{
+      if(!watched.has(v)) scores[v] = (scores[v]||0) + sim*score;
+    });
+  });
+  return Object.keys(scores).sort((a,b)=>scores[b]-scores[a]).slice(0,topN);
+}
+function jaccard(a,b){
+  if(!a.size || !b.size) return 0;
+  const inter = [...a].filter(x=>b.has(x)).length;
+  const union = new Set([...a,...b]).size;
+  return inter/union;
+}
+function contentRecs(uid, topN=10){
+  const tags = new Set();
+  (interactions[uid]||[]).forEach(i=>{
+    if(['watch','like','share'].includes(i.a)){
+      const v = videoMeta[i.v];
+      v.tags.forEach(t=>tags.add(t));
+      tags.add(v.genre);
+    }
+  });
+  if(!tags.size) return [];
+  const watched = new Set((interactions[uid]||[]).map(i=>i.v));
+  const scores = {};
+  Object.entries(videoMeta).forEach(([vid,v])=>{
+    if(watched.has(vid)) return;
+    const vtags = new Set([...v.tags, v.genre]);
+    scores[vid] = jaccard(tags, vtags);
+  });
+  return Object.keys(scores).sort((a,b)=>scores[b]-scores[a]).slice(0,topN);
+}
+// HybridRecommender.recommend(): checks cache, else computes & caches
+function hybridRecs(uid, topN=12, cfWeight=0.6){
+  if(cache[uid]) return {...cache[uid], cached:true};
+
+  const cf = collaborativeRecs(uid, topN);
+  const cbf = contentRecs(uid, topN);
+  const cbfWeight = 1-cfWeight;
+  const scores = {};
+  const reasons = {};
+  cf.forEach((v,i)=>{ scores[v] = (scores[v]||0) + cfWeight*(1/(i+1)); reasons[v] = reasons[v] || 'cf'; });
+  cbf.forEach((v,i)=>{ scores[v] = (scores[v]||0) + cbfWeight*(1/(i+1)); if(!reasons[v]) reasons[v] = 'cbf'; else if(reasons[v]==='cf') reasons[v]='cf+cbf'; });
+
+  let result;
+  // exclude videos the user has already watched/skipped/liked
+  const watched = new Set((interactions[uid]||[]).map(i=>i.v));
+  if(!Object.keys(scores).length){
+    result = Object.keys(videoMeta).filter(v=>!watched.has(v)).slice(0,topN);
+    result.forEach(v=> reasons[v]='cold');
+  } else {
+    result = Object.keys(scores).filter(v=>!watched.has(v)).sort((a,b)=>scores[b]-scores[a]).slice(0,topN);
+  }
+  const data = {result, reasons, cached:false};
+  cache[uid] = data;
+  return data;
+}
+// APIGateway.record_interaction(): adds interaction + invalidates cache
+function recordInteraction(uid, vid, action, rating=0){
+  interactions[uid].push({v:vid, a:action, r:rating});
+  delete cache[uid]; // cache invalidation
+}
+
+/* ============================================================
+   APP STATE & RENDERING
+   ============================================================ */
+let currentUid = 'u001';
+let activeGenre = 'All';
+let currentVideoId = null;
+let playerTimer = null;
+let notifCount = 0;
+
+const homeView = document.getElementById('homeView');
+const watchView = document.getElementById('watchView');
+const grid = document.getElementById('videoGrid');
+const chipsEl = document.getElementById('chips');
+
+function initials(name){ return name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase(); }
+
+/* ---- Sidebar users ---- */
+const sidebarUsers = document.getElementById('sidebarUsers');
+users.forEach(u=>{
+  const btn = document.createElement('button');
+  btn.className = 'side-item' + (u.id==='u001' ? ' active' : '');
+  btn.dataset.uid = u.id;
+  btn.innerHTML = `<span class="side-icon mono" style="font-size:12px;">${u.name[0]}</span> ${u.name}`;
+  btn.addEventListener('click', ()=> selectUser(u.id));
+  sidebarUsers.appendChild(btn);
+});
+
+/* ---- Chips ---- */
+const allGenres = ['All','technology','cooking','travel','music','fitness','gaming'];
+allGenres.forEach(g=>{
+  const chip = document.createElement('button');
+  chip.className = 'chip' + (g==='All' ? ' active' : '');
+  chip.textContent = g === 'All' ? 'All' : g.charAt(0).toUpperCase()+g.slice(1);
+  chip.addEventListener('click', ()=>{
+    document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+    chip.classList.add('active');
+    activeGenre = g;
+    renderGrid();
+  });
+  chipsEl.appendChild(chip);
+});
+
+/* ---- Search ---- */
+const searchInput = document.getElementById('searchInput');
+let searchQuery = '';
+searchInput.addEventListener('input', (e)=>{
+  searchQuery = e.target.value.toLowerCase().trim();
+  showHome();
+  renderGrid();
+});
+
+/* ---- Reason tag helper ---- */
+function reasonTag(reason){
+  if(reason==='cf') return '<span class="why-tag cf">∿ because users like you watched this</span>';
+  if(reason==='cbf') return '<span class="why-tag cbf"># matches your interests</span>';
+  if(reason==='cf+cbf') return '<span class="why-tag cf">∿ strong match — CF + tags</span>';
+  return '<span class="why-tag cold">★ trending pick</span>';
+}
+
+/* ---- Render home grid ---- */
+function renderGrid(){
+  const t0 = performance.now();
+  const wasCached = !!cache[currentUid];
+  const {result, reasons} = hybridRecs(currentUid, 12);
+  const t1 = performance.now();
+
+  const cacheEl = document.getElementById('cacheStatus');
+  cacheEl.textContent = wasCached ? 'HIT' : 'MISS';
+  cacheEl.className = wasCached ? 'hit' : 'miss';
+  document.getElementById('latency').textContent = (wasCached ? '0.00' : (t1-t0).toFixed(2)) + 'ms';
+  document.getElementById('interactionCount').textContent = interactions[currentUid].length;
+
+  let filtered = result.filter(vid => activeGenre==='All' || videoMeta[vid].genre===activeGenre);
+  if(searchQuery){
+    filtered = filtered.filter(vid => videoMeta[vid].title.toLowerCase().includes(searchQuery) || videoMeta[vid].genre.includes(searchQuery) || videoMeta[vid].tags.some(t=>t.includes(searchQuery)));
+  }
+
+  if(!filtered.length){
+    grid.innerHTML = '<div class="mono" style="color:var(--muted);grid-column:1/-1;padding:40px 0;">No recommendations match this filter.</div>';
+    return;
+  }
+
+  grid.innerHTML = filtered.map(vid=>{
+    const v = videoMeta[vid];
+    return `<div class="video-card" data-vid="${vid}">
+      <div class="thumb" style="background-image:url('${v.img}');background-size:cover;background-position:center;">
+        <div class="duration-badge mono">${v.duration}</div>
+      </div>
+      <div class="video-info">
+        <div class="channel-avatar" style="background:${v.color1};">${initials(v.channel)}</div>
+        <div class="video-meta">
+          <div class="video-title">${v.title}</div>
+          <div class="video-channel">${v.channel}</div>
+          <div class="video-stats">${v.views} · ${v.age}</div>
+          ${reasonTag(reasons[vid])}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  grid.querySelectorAll('.video-card').forEach(card=>{
+    card.addEventListener('click', ()=> openWatch(card.dataset.vid));
+  });
+}
+
+/* ---- Select user ---- */
+function selectUser(uid){
+  currentUid = uid;
+  document.querySelectorAll('#sidebarUsers .side-item').forEach(el=>el.classList.toggle('active', el.dataset.uid===uid));
+  const user = users.find(u=>u.id===uid);
+  document.getElementById('activeUserName').textContent = user.name;
+  document.getElementById('userAvatar').textContent = user.name[0];
+  showHome();
+  renderGrid();
+}
+
+/* ---- View switching ---- */
+function showHome(){
+  homeView.classList.remove('hidden');
+  watchView.classList.add('hidden');
+  if(playerTimer){ clearInterval(playerTimer); playerTimer=null; }
+}
+function showWatch(){
+  homeView.classList.add('hidden');
+  watchView.classList.remove('hidden');
+}
+
+document.getElementById('navHome').addEventListener('click', ()=>{ showHome(); document.querySelectorAll('.side-item').forEach(s=>s.classList.remove('active')); document.getElementById('navHome').classList.add('active'); renderGrid(); });
+document.getElementById('logoHome').addEventListener('click', ()=>{ searchQuery=''; searchInput.value=''; showHome(); renderGrid(); });
+
+document.getElementById('navHistory').addEventListener('click', ()=>{
+  showHistory();
+});
+document.getElementById('navLiked').addEventListener('click', ()=>{
+  showLiked();
+});
+document.getElementById('navCF').addEventListener('click', ()=> alert('Collaborative Filtering: finds users with similar viewing patterns (cosine similarity on interaction vectors) and recommends videos those similar users engaged with. Weight in hybrid score: 0.6'));
+document.getElementById('navCBF').addEventListener('click', ()=> alert('Content-Based Filtering: builds a tag/genre profile from videos you watched or liked, then finds unwatched videos with overlapping tags using Jaccard similarity. Weight in hybrid score: 0.4'));
+
+function setSidebarActive(id){
+  document.querySelectorAll('.side-item').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function showHistory(){
+  setSidebarActive('navHistory');
+  showHome();
+  const hist = interactions[currentUid].filter(i=>['watch','like','share'].includes(i.a));
+  grid.innerHTML = hist.length ? hist.slice().reverse().map(i=>{
+    const v = videoMeta[i.v];
+    return `<div class="video-card" data-vid="${i.v}">
+      <div class="thumb" style="background-image:url('${v.img}');background-size:cover;background-position:center;">
+        <div class="duration-badge mono">${v.duration}</div>
+      </div>
+      <div class="video-info">
+        <div class="channel-avatar" style="background:${v.color1};">${initials(v.channel)}</div>
+        <div class="video-meta">
+          <div class="video-title">${v.title}</div>
+          <div class="video-channel">${v.channel}</div>
+          <div class="video-stats">action: ${i.a} · rating: ${i.r}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('') : '<div class="mono" style="color:var(--muted);grid-column:1/-1;padding:40px 0;">No watch history yet for this user.</div>';
+  grid.querySelectorAll('.video-card').forEach(card=> card.addEventListener('click', ()=> openWatch(card.dataset.vid)));
+}
+
+function showLiked(){
+  setSidebarActive('navLiked');
+  showHome();
+  const liked = interactions[currentUid].filter(i=>i.a==='like');
+  grid.innerHTML = liked.length ? liked.map(i=>{
+    const v = videoMeta[i.v];
+    return `<div class="video-card" data-vid="${i.v}">
+      <div class="thumb" style="background-image:url('${v.img}');background-size:cover;background-position:center;">
+        <div class="duration-badge mono">${v.duration}</div>
+      </div>
+      <div class="video-info">
+        <div class="channel-avatar" style="background:${v.color1};">${initials(v.channel)}</div>
+        <div class="video-meta">
+          <div class="video-title">${v.title}</div>
+          <div class="video-channel">${v.channel}</div>
+          <div class="video-stats">${v.views} · ${v.age}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('') : '<div class="mono" style="color:var(--muted);grid-column:1/-1;padding:40px 0;">No liked videos yet for this user.</div>';
+  grid.querySelectorAll('.video-card').forEach(card=> card.addEventListener('click', ()=> openWatch(card.dataset.vid)));
+}
+
+/* ---- Watch page ---- */
+function openWatch(vid){
+  currentVideoId = vid;
+  const v = videoMeta[vid];
+  showWatch();
+
+  const player = document.getElementById('player');
+  player.style.backgroundImage = `url('${v.img}')`;
+  player.style.backgroundSize = 'cover';
+  player.style.backgroundPosition = 'center';
+  document.getElementById('playerGenre').textContent = v.genre;
+  document.getElementById('playerProgress').style.width = '0%';
+  document.getElementById('playBtn').textContent = '▶';
+
+  document.getElementById('watchTitle').textContent = v.title;
+  document.getElementById('watchChannelAvatar').textContent = initials(v.channel);
+  document.getElementById('watchChannelAvatar').style.background = v.color1;
+  document.getElementById('watchChannelName').textContent = v.channel;
+  document.getElementById('watchViews').textContent = v.views + ' · ' + v.age;
+  document.getElementById('watchDescStats').textContent = `${v.views} · ${v.age} · duration ${v.duration}`;
+  document.getElementById('watchDesc').textContent = v.desc;
+  document.getElementById('watchTags').innerHTML = v.tags.map(t=>`<span class="desc-tag">#${t}</span>`).join('');
+
+  // reset action buttons
+  const likeBtn = document.getElementById('likeBtn');
+  const skipBtn = document.getElementById('skipBtn');
+  likeBtn.classList.remove('active'); skipBtn.classList.remove('active');
+  document.getElementById('likeLabel').textContent = 'Like';
+  document.getElementById('skipLabel').textContent = 'Not interested';
+  document.getElementById('feedEvent').classList.remove('show');
+
+  // record a "watch" interaction immediately (mirrors a user opening a video)
+  recordInteraction(currentUid, vid, 'watch', 4.0);
+  showFeedEvent(`recorded interaction → user=${currentUid} action=watch video=${vid}`);
+  updateUpNext();
+
+  if(playerTimer) clearInterval(playerTimer);
+
+  document.getElementById('playBtn').onclick = ()=> togglePlay(v.durSec);
+}
+
+function togglePlay(durSec){
+  const playBtn = document.getElementById('playBtn');
+  const progress = document.getElementById('playerProgress');
+  if(playerTimer){
+    clearInterval(playerTimer); playerTimer = null;
+    playBtn.textContent = '▶';
+    return;
+  }
+  playBtn.textContent = '❙❙';
+  let elapsed = parseFloat(progress.style.width) || 0;
+  const totalMs = 8000; // compress full video into 8s demo playback
+  playerTimer = setInterval(()=>{
+    elapsed += (100/totalMs)*100;
+    if(elapsed >= 100){ elapsed = 100; clearInterval(playerTimer); playerTimer=null; playBtn.textContent='▶'; }
+    progress.style.width = elapsed + '%';
+  }, 100);
+}
+
+function showFeedEvent(text){
+  const el = document.getElementById('feedEvent');
+  el.textContent = '// ' + text;
+  el.classList.add('show');
+}
+
+/* ---- Like / Skip / Share buttons ---- */
+document.getElementById('likeBtn').addEventListener('click', ()=>{
+  const likeBtn = document.getElementById('likeBtn');
+  const skipBtn = document.getElementById('skipBtn');
+  const wasActive = likeBtn.classList.contains('active');
+  likeBtn.classList.toggle('active');
+  skipBtn.classList.remove('active');
+  document.getElementById('skipLabel').textContent = 'Not interested';
+  document.getElementById('likeLabel').textContent = likeBtn.classList.contains('active') ? 'Liked' : 'Like';
+
+  if(!wasActive){
+    recordInteraction(currentUid, currentVideoId, 'like', 5.0);
+    showFeedEvent(`recorded interaction → user=${currentUid} action=like video=${currentVideoId} → cache invalidated, recomputing recs`);
+    notifCount++;
+    document.getElementById('notifCount').textContent = notifCount;
+  } else {
+    // remove last like interaction for this video (toggle off)
+    const arr = interactions[currentUid];
+    const idx = arr.map(i=>i.v+i.a).lastIndexOf(currentVideoId+'like');
+    if(idx>-1) arr.splice(idx,1);
+    delete cache[currentUid];
+    showFeedEvent(`removed interaction → user=${currentUid} action=like video=${currentVideoId}`);
+  }
+  document.getElementById('interactionCount').textContent = interactions[currentUid].length;
+  updateUpNext();
+});
+
+document.getElementById('skipBtn').addEventListener('click', ()=>{
+  const likeBtn = document.getElementById('likeBtn');
+  const skipBtn = document.getElementById('skipBtn');
+  const wasActive = skipBtn.classList.contains('active');
+  skipBtn.classList.toggle('active');
+  likeBtn.classList.remove('active');
+  document.getElementById('likeLabel').textContent = 'Like';
+  document.getElementById('skipLabel').textContent = skipBtn.classList.contains('active') ? 'Marked' : 'Not interested';
+
+  if(!wasActive){
+    recordInteraction(currentUid, currentVideoId, 'skip', 0.0);
+    showFeedEvent(`recorded interaction → user=${currentUid} action=skip video=${currentVideoId} → cache invalidated, recomputing recs`);
+  } else {
+    const arr = interactions[currentUid];
+    const idx = arr.map(i=>i.v+i.a).lastIndexOf(currentVideoId+'skip');
+    if(idx>-1) arr.splice(idx,1);
+    delete cache[currentUid];
+    showFeedEvent(`removed interaction → user=${currentUid} action=skip video=${currentVideoId}`);
+  }
+  document.getElementById('interactionCount').textContent = interactions[currentUid].length;
+  updateUpNext();
+});
+
+document.getElementById('shareBtn').addEventListener('click', ()=>{
+  recordInteraction(currentUid, currentVideoId, 'share', 0.0);
+  showFeedEvent(`recorded interaction → user=${currentUid} action=share video=${currentVideoId} (weight 2.5) → cache invalidated`);
+  document.getElementById('interactionCount').textContent = interactions[currentUid].length;
+  updateUpNext();
+});
+
+/* ---- Up next sidebar (live recompute) ---- */
+function updateUpNext(){
+  document.getElementById('upNextUser').textContent = users.find(u=>u.id===currentUid).name;
+  const {result, reasons} = hybridRecs(currentUid, 8);
+  const list = document.getElementById('upNextList');
+  const filtered = result.filter(v=>v!==currentVideoId);
+  list.innerHTML = filtered.map(vid=>{
+    const v = videoMeta[vid];
+    return `<div class="side-video" data-vid="${vid}">
+      <div class="side-thumb" style="background-image:url('${v.img}');background-size:cover;background-position:center;">
+        <div class="side-duration mono">${v.duration}</div>
+      </div>
+      <div class="side-info">
+        <div class="side-title">${v.title}</div>
+        <div class="side-channel">${v.channel}</div>
+        <div class="side-stats">${v.views}</div>
+        <div class="side-why">${reasonTag(reasons[vid])}</div>
+      </div>
+    </div>`;
+  }).join('');
+  list.querySelectorAll('.side-video').forEach(card=> card.addEventListener('click', ()=> openWatch(card.dataset.vid)));
+}
+
+/* ---- Notifications button ---- */
+document.getElementById('notifBtn').addEventListener('click', ()=>{
+  if(notifCount===0){ alert('No new notifications.'); return; }
+  alert(`You have ${notifCount} new interaction(s) recorded this session. Each interaction invalidates the recommendation cache and updates your "Up next" list.`);
+  notifCount = 0;
+  document.getElementById('notifCount').textContent = 0;
+});
+
+/* ---- Sidebar collapse (mobile/menu icon) ---- */
+document.getElementById('menuToggle').addEventListener('click', ()=>{
+  document.getElementById('sidebar').classList.toggle('collapsed');
+});
+
+/* ---- Init ---- */
+renderGrid();
+</script>
+
+<!-- LOGIN MODAL -->
+<div id="loginModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:200;align-items:center;justify-content:center;">
+  <div style="background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:28px;width:320px;">
+    <div style="font-size:16px;font-weight:600;margin-bottom:16px;">Sign in to RecTube</div>
+    <div style="display:flex;flex-direction:column;gap:10px;" id="loginUserList"></div>
+    <button id="closeLoginModal" style="margin-top:16px;width:100%;background:none;border:1px solid var(--border);color:var(--text);border-radius:18px;padding:8px;cursor:pointer;">Cancel</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  const modal = document.getElementById('loginModal');
+  const loginBtn = document.getElementById('loginBtn');
+  const closeBtn = document.getElementById('closeLoginModal');
+  const listEl = document.getElementById('loginUserList');
+
+  function buildList(){
+    listEl.innerHTML = '';
+    users.forEach(u=>{
+      const b = document.createElement('button');
+      b.textContent = `${u.name} (${u.id})`;
+      b.style.cssText = 'background:var(--hover);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px;cursor:pointer;text-align:left;';
+      b.addEventListener('click', ()=>{
+        selectUser(u.id);
+        loginBtn.textContent = '👤 ' + u.name;
+        modal.style.display = 'none';
+      });
+      listEl.appendChild(b);
+    });
+  }
+
+  loginBtn.addEventListener('click', ()=>{
+    buildList();
+    modal.style.display = 'flex';
+  });
+  closeBtn.addEventListener('click', ()=> modal.style.display = 'none');
+  modal.addEventListener('click', (e)=>{ if(e.target===modal) modal.style.display='none'; });
+})();
+</script>
+</body>
+</html>
