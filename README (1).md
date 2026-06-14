@@ -1,213 +1,124 @@
-# 🎬 StreamWave — Video Recommendation System
-
-> **Case Study:** Designing a scalable, personalized video recommendation system similar to Netflix / YouTube.
-
+# Video Recommendation System
+ 
+A Python implementation of a hybrid video recommendation engine, paired with a fully working YouTube-style web dashboard for live demonstration. This project was built as part of the System Design final evaluation.
+ 
 ---
-
-## 📌 Overview
-
-StreamWave is a global video streaming platform that delivers personalized video content to millions of users across web, mobile, and smart TV applications. This repository contains the **Python implementation** of the recommendation engine designed as part of a System Design case study.
-
-The engine demonstrates three core recommendation techniques:
-
-| Technique | Description |
-|-----------|-------------|
-| **Collaborative Filtering** | Recommends videos based on similar users' watch patterns |
-| **Content-Based Filtering** | Recommends videos with similar tags/genres to what the user watched |
-| **Hybrid Recommendation** | Combines both approaches with a tunable weight (α) |
-
----
-
-## 📁 Repository Structure
-
+ 
+## 1. Project Overview
+ 
+This project simulates how platforms like YouTube recommend videos to users. It combines two recommendation strategies into a single hybrid ranking:
+ 
+- **Collaborative Filtering (CF)** — uses cosine similarity between users' interaction vectors to find users with similar taste, then recommends videos those similar users enjoyed.
+- **Content-Based Filtering (CBF)** — uses Jaccard similarity between tag/genre profiles to recommend videos similar to what the user already liked.
+- **Hybrid Recommender** — combines CF (60% weight) and CBF (40% weight) into a single ranked list, with a cold-start fallback (randomised popular videos) for new users with no history.
+The system also demonstrates several core System Design concepts:
+ 
+- API Gateway pattern (authentication + rate limiting)
+- Caching with TTL and cache invalidation on new interactions
+- Microservices-style separation of concerns (User, Video, Recommendation, Interaction services)
+- A working frontend (`youtube_clone.html`) — a YouTube-style dashboard where every click (like, skip, share, search) calls the same recommendation logic implemented in Python, live, in the browser
+### Project Structure
+ 
 ```
-streamwave-recommendation/
-│
-├── recommendation_engine.py   # ← Main Python implementation
-└── README.md                  # ← This file
+shashank_studentAttend/
+├── main.py              # Python recommendation engine (CF + CBF + Hybrid + API Gateway)
+├── youtube_clone.html   # YouTube-style web dashboard (working demo UI)
+├── README.md            # This file
+└── docs/
+    └── VideoRecommendationSystem_Documentation.pdf  # Full project documentation
 ```
-
+ 
 ---
-
-## ⚙️ Requirements
-
+ 
+## 2. Setup Instructions
+ 
+1. Ensure Python 3.8 or later is installed:
+```bash
+   python3 --version
+```
+ 
+2. Clone this repository:
+```bash
+   git clone https://github.com/YOUR_USERNAME/video-recommendation-system.git
+   cd video-recommendation-system
+```
+ 
+3. (Optional) Create a virtual environment:
+```bash
+   python3 -m venv venv
+   source venv/bin/activate      # On Windows: venv\Scripts\activate
+```
+ 
+4. Install dependencies (see Dependencies section below).
+---
+ 
+## 3. Dependencies
+ 
+| Package | Purpose |
+|---|---|
+| `numpy` | Vector operations for similarity calculations |
+| `scikit-learn` | `cosine_similarity` for collaborative filtering |
+ 
+Install with:
 ```bash
 pip install numpy scikit-learn
 ```
-
-> Python 3.7+ recommended
-
+ 
+No external dependencies are required for the web dashboard (`youtube_clone.html`) — it runs entirely with plain HTML, CSS, and JavaScript in any modern browser.
+ 
 ---
-
-## 🚀 How to Run
-
+ 
+## 4. Execution Steps
+ 
+### Run the recommendation engine (Python backend)
+ 
 ```bash
-python recommendation_engine.py
+python3 main.py
 ```
-
-You will see **5 clearly labeled output sections** in your terminal — one for each step of the recommendation pipeline.
-
+ 
+This will:
+- Load the sample dataset (`watch_history` and `video_tags`)
+- Build the user-video rating matrix
+- Compute collaborative filtering recommendations (user similarity via cosine similarity)
+- Compute content-based recommendations (tag/genre similarity)
+- Combine both into a final hybrid recommendation list
+- Print the recommended videos for each sample user to the console
+### Run the web dashboard (frontend demo)
+ 
+1. Open `youtube_clone.html` directly in any modern browser (double-click the file, or right-click → Open With → Browser).
+2. Use the sidebar or the "Sign in" button to switch between the four demo users (Aarav, Priya, Ravi, Sneha).
+3. Browse the home feed — each video card shows a "why recommended" tag (CF / content match / trending).
+4. Click any video to open the watch page. Use Like / Not Interested / Share to record live interactions — this invalidates the recommendation cache and instantly recomputes the "Up Next" list, exactly as the backend would.
+5. Use the search bar and category chips to filter the feed.
 ---
-
-## 🧠 How It Works
-
-### Step 1 — User-Video Matrix
-Converts the watch history dictionary into a 2D matrix where:
-- **Rows** = Users
-- **Columns** = Videos
-- **Values** = Ratings (1–5, or 0 if not watched)
-
-```
-           vid_A  vid_B  vid_C  vid_D  vid_E
-user_1       5      3      4      0      0
-user_2       4      5      0      3      0
-user_3       0      4      5      0      2
-user_4       3      0      4      0      5
-```
-
----
-
-### Step 2 — Cosine Similarity Between Users
-Measures how similar users are based on their ratings vector.
-
-```python
-sim = cosine_similarity(matrix)
-# Higher score = more similar taste
-```
-
----
-
-### Step 3 — Collaborative Filtering
-For a target user, finds similar users and predicts scores for **unseen** videos using a weighted average:
-
-```
-predicted_score(video) = Σ(similarity_i × rating_i) / Σ(|similarity_i|)
-```
-
----
-
-### Step 4 — Content-Based Filtering
-Builds a **user profile** from the average tag vectors of watched videos, then scores unseen videos by cosine similarity to that profile.
-
-```python
-user_profile = mean([tag_vector(v) for v in watched_videos])
-score(video) = cosine_similarity(user_profile, tag_vector(video))
-```
-
----
-
-### Step 5 — Hybrid Recommendation
-Combines both scores with a tunable weight `alpha`:
-
-```
-Hybrid Score = α × collab_score + (1 − α) × content_score
-```
-
-Default: `alpha = 0.6` (60% collaborative, 40% content-based)
-
----
-
-## 📊 Sample Output
-
-```
-=======================================================
-  SCREENSHOT 1 — User-Video Matrix
-=======================================================
-           vid_A   vid_B   vid_C   vid_D   vid_E
-user_1         5       3       4       0       0
-user_2         4       5       0       3       0
-user_3         0       4       5       0       2
-user_4         3       0       4       0       5
-
-=======================================================
-  SCREENSHOT 3 — Collaborative Filtering (user_1)
-=======================================================
-  vid_D  →  Predicted Score: 0.8230
-  vid_E  →  Predicted Score: 0.5410
-
-=======================================================
-  SCREENSHOT 5 — Hybrid Recommendation (user_1)
-=======================================================
-  vid_D  →  Hybrid Score: 0.8200
-  vid_E  →  Hybrid Score: 0.4870
-```
-
----
-
-## 🏗️ Full System Architecture (High-Level)
-
-```
-┌──────────────────────────────────────────┐
-│              CLIENT LAYER                │
-│    Web App │ Mobile App │ Smart TV       │
-└─────────────────┬────────────────────────┘
-                  │
-┌─────────────────▼────────────────────────┐
-│         API GATEWAY / LOAD BALANCER      │
-└──┬──────────┬──────────┬──────────┬──────┘
-   │          │          │          │
-User       Reco       Ranking   Metadata
-Activity   Engine     Service   Service
-Collector  (this      (LightGBM)(Elastic-
-(Kafka)    repo)               search)
-   │          │          │          │
-┌──▼──────────▼──────────▼──────────▼──────┐
-│        CACHING LAYER (Redis)             │
-└─────────────────┬────────────────────────┘
-                  │
-┌─────────────────▼────────────────────────┐
-│  PostgreSQL │ Cassandra │ MongoDB        │
-└─────────────────┬────────────────────────┘
-                  │
-┌─────────────────▼────────────────────────┐
-│     ML PIPELINE (Spark + Airflow)        │
-└──────────────────────────────────────────┘
-```
-
----
-
-## 🗄️ Database Design Summary
-
-| Data | Database | Reason |
-|------|----------|--------|
-| User Profiles | PostgreSQL | ACID, relational |
-| Watch Events | Cassandra | High write throughput |
-| Video Metadata | MongoDB | Flexible schema |
-| Reco Cache | Redis | Sub-ms latency |
-| Search Index | Elasticsearch | Full-text search |
-
----
-
-## 📈 Scalability Highlights
-
-- **Kafka** for high-throughput event ingestion
-- **Redis Cluster** for distributed caching
-- **Kubernetes** for horizontal auto-scaling
-- **Multi-region** deployment for global low latency
-- **Circuit Breaker** pattern for fault tolerance
-
----
-
-## 🔁 Recommendation Workflow
-
-```
-User Activity → Kafka → Feature Engineering
-     → Candidate Generation (500 videos)
-     → Ranking Model (Top 20)
-     → Redis Cache → API Response
-     → Feedback Loop → Model Retrain
-```
-
----
-
-## 📄 License
-
-This project is created for educational/academic purposes as part of a System Design case study.
-
----
-
-## 👤 Author
-
-**StreamWave System Design Case Study**  
-Subject: System Design  
-Topic: Video Recommendation System  
+ 
+## 5. Additional Project Details
+ 
+### Algorithms Used
+ 
+| Technique | Formula | Purpose |
+|---|---|---|
+| Cosine Similarity | `similarity = dot(A,B) / (‖A‖ × ‖B‖)` | Measures similarity between user rating vectors (Collaborative Filtering) |
+| Jaccard Similarity | `J(A,B) = \|A ∩ B\| / \|A ∪ B\|` | Measures overlap between video tag sets (Content-Based Filtering) |
+| Hybrid Score | `score(v) = 0.6 × CF_score(v) + 0.4 × CBF_score(v)` | Combines both signals into a final ranking |
+ 
+### Key Features Demonstrated
+ 
+- Cold-start handling for new users with no watch history
+- Cache invalidation on every new interaction (watch/like/skip/share)
+- Authentication and rate-limiting simulation via an API Gateway class
+- A complete, working frontend that mirrors the backend's recommendation logic in real time
+### Sample Dataset
+ 
+The project ships with a small sample dataset (4 users, 5 videos with genre/tag metadata) so the algorithms can be demonstrated end-to-end without needing a real database connection. See `main.py` for the `watch_history` and `video_tags` dictionaries.
+ 
+### Documentation
+ 
+Full project documentation — including Problem Statement, Proposed Solution, System Architecture, Module Description, Database Design, Technology Stack, Implementation Details, Screenshots, and Future Scope — is available in `docs/VideoRecommendationSystem_Documentation.pdf` (and `.docx`).
+ 
+### GitHub Repository
+ 
+> https://github.com/Shashansharma/RecTude-System-Design-Project
+ 
+*(Replace `YOUR_USERNAME` with your actual GitHub username after uploading this project as a repository.)*
+ 
