@@ -119,6 +119,5 @@ Full project documentation — including Problem Statement, Proposed Solution, S
 ### GitHub Repository
  
 > https://github.com/Shashansharma/RecTude-System-Design-Project
- 
-*(Replace `YOUR_USERNAME` with your actual GitHub username after uploading this project as a repository.)*
+
  
